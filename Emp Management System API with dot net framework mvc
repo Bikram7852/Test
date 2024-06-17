@@ -1,0 +1,189 @@
+Step 1: Setup the Project
+Open Visual Studio.
+Create a new project.
+Select ASP.NET Web Application (.NET Framework) and name it EmployeeManagementSystem.
+Choose Web API from the project template options.
+
+
+Step 2: Define the Employee Model
+First, create an Employee model class.
+
+Right-click on the Models folder.
+Add a new class named Employee.cs.
+
+using System;
+
+namespace EmployeeManagementSystem.Models
+{
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Position { get; set; }
+        public decimal Salary { get; set; }
+    }
+}
+
+
+Step 3: Create an Employee Repository
+We'll use an in-memory list to store our employees.
+
+Right-click on the Models folder.
+Add a new class named EmployeeRepository.cs.
+
+
+using System.Collections.Generic;
+using System.Linq;
+
+namespace EmployeeManagementSystem.Models
+{
+    public class EmployeeRepository
+    {
+        private static List<Employee> employees = new List<Employee>();
+        private static int nextId = 1;
+
+        public IEnumerable<Employee> GetAll()
+        {
+            return employees;
+        }
+
+        public Employee Get(int id)
+        {
+            return employees.FirstOrDefault(e => e.Id == id);
+        }
+
+        public void Add(Employee employee)
+        {
+            employee.Id = nextId++;
+            employees.Add(employee);
+        }
+
+        public void Update(Employee employee)
+        {
+            var existingEmployee = Get(employee.Id);
+            if (existingEmployee != null)
+            {
+                existingEmployee.Name = employee.Name;
+                existingEmployee.Position = employee.Position;
+                existingEmployee.Salary = employee.Salary;
+            }
+        }
+
+        public void Delete(int id)
+        {
+            var employee = Get(id);
+            if (employee != null)
+            {
+                employees.Remove(employee);
+            }
+        }
+    }
+}
+
+
+
+Step 4: Create the Employees Controller
+Now, let's create an EmployeesController to handle API requests.
+
+Right-click on the Controllers folder.
+Add a new Controller named EmployeesController.
+
+using EmployeeManagementSystem.Models;
+using System.Collections.Generic;
+using System.Web.Http;
+
+namespace EmployeeManagementSystem.Controllers
+{
+    public class EmployeesController : ApiController
+    {
+        private static EmployeeRepository repository = new EmployeeRepository();
+
+        [HttpGet]
+        public IEnumerable<Employee> Get()
+        {
+            return repository.GetAll();
+        }
+
+        [HttpGet]
+        public IHttpActionResult Get(int id)
+        {
+            var employee = repository.Get(id);
+            if (employee == null)
+            {
+                return NotFound();
+            }
+            return Ok(employee);
+        }
+
+        [HttpPost]
+        public IHttpActionResult Post(Employee employee)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            repository.Add(employee);
+            return CreatedAtRoute("DefaultApi", new { id = employee.Id }, employee);
+        }
+
+        [HttpPut]
+        public IHttpActionResult Put(int id, Employee employee)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var existingEmployee = repository.Get(id);
+            if (existingEmployee == null)
+            {
+                return NotFound();
+            }
+
+            employee.Id = id;
+            repository.Update(employee);
+            return StatusCode(System.Net.HttpStatusCode.NoContent);
+        }
+
+        [HttpDelete]
+        public IHttpActionResult Delete(int id)
+        {
+            var employee = repository.Get(id);
+            if (employee == null)
+            {
+                return NotFound();
+            }
+
+            repository.Delete(id);
+            return StatusCode(System.Net.HttpStatusCode.NoContent);
+        }
+    }
+}
+
+
+
+Step 5: Configure Web API Routes
+Ensure the Web API routes are configured in WebApiConfig.cs.
+
+Open App_Start/WebApiConfig.cs.
+
+using System.Web.Http;
+
+namespace EmployeeManagementSystem
+{
+    public static class WebApiConfig
+    {
+        public static void Register(HttpConfiguration config)
+        {
+            // Web API routes
+            config.MapHttpAttributeRoutes();
+
+            config.Routes.MapHttpRoute(
+                name: "DefaultApi",
+                routeTemplate: "api/{controller}/{id}",
+                defaults: new { id = RouteParameter.Optional }
+            );
+        }
+    }
+}
